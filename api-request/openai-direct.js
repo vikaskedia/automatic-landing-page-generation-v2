@@ -153,8 +153,8 @@ router.post('/generate-landing-page', upload.single('image'), async (req, res) =
         // Prepare image information for the prompt if an image was uploaded
         const imageInfo = uploadedImage ? `
             The user has provided an image for the landing page. 
-            The image is located at: ${uploadedImage.path}
-            Please incorporate this image into the design, preferably in the hero section.
+            The image is located at: /uploads/${uploadedImage.filename}
+            Please incorporate this image into the design.
             Make sure to use proper image optimization and responsive design techniques.
         ` : '';
 

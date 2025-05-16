@@ -33,3 +33,9 @@ coverage/
 # Temporary files
 tmp/
 temp/ 
+
+uploads/
+uploads/*
+
+landing-pages/
+landing-pages/*

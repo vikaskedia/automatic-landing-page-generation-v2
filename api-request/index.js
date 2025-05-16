@@ -12,6 +12,7 @@ app.use(express.json());
 
 // Serve static files from landing-pages directory
 app.use('/landing-page', express.static(path.join(__dirname, 'landing-pages')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api', openaiRouter);
