@@ -107,16 +107,49 @@
             <i class="fas fa-folder-open"></i>
             No landing pages generated yet.
           </div>
-          <div v-else class="pages-list">
-            <div v-for="page in generatedPages" :key="page.filename" class="page-item">
-              <div class="page-info">
-                <span class="page-date"><i class="far fa-clock"></i> {{ formatDate(page.createdAt) }}</span>
-                <span class="page-filename"><i class="far fa-file-alt"></i> {{ page.filename }}</span>
+          <div v-else>
+            <div class="pages-list">
+              <div v-for="page in paginatedPages" :key="page.filename" class="page-item">
+                <div class="page-info">
+                  <span class="page-date"><i class="far fa-clock"></i> {{ formatDate(page.createdAt) }}</span>
+                  <span class="page-filename"><i class="far fa-file-alt"></i> {{ page.filename }}</span>
+                </div>
+                <a :href="`http://localhost:3000${page.url}`" target="_blank" class="view-link">
+                  <i class="fas fa-eye"></i>
+                  View Page
+                </a>
               </div>
-              <a :href="`http://localhost:3000${page.url}`" target="_blank" class="view-link">
-                <i class="fas fa-eye"></i>
-                View Page
-              </a>
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="pagination" v-if="totalPages > 1">
+              <button 
+                class="pagination-button" 
+                :disabled="currentPage === 1"
+                @click="goToPrevPage"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              
+              <div class="page-numbers">
+                <button 
+                  v-for="page in totalPages" 
+                  :key="page"
+                  class="page-number"
+                  :class="{ active: currentPage === page }"
+                  @click="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+              </div>
+              
+              <button 
+                class="pagination-button" 
+                :disabled="currentPage === totalPages"
+                @click="goToNextPage"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -167,6 +200,41 @@ const loadingPages = ref(false)
 const selectedImages = ref([])
 const imagePreview = ref('')
 const fileInput = ref(null)
+
+// Add pagination related refs
+const currentPage = ref(1)
+const itemsPerPage = 5
+
+// Add computed property for paginated pages
+const paginatedPages = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return generatedPages.value.slice(start, end)
+})
+
+// Add computed property for total pages
+const totalPages = computed(() => {
+  return Math.ceil(generatedPages.value.length / itemsPerPage)
+})
+
+// Add pagination methods
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
+}
+
+const goToPrevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString()
@@ -699,5 +767,85 @@ onMounted(() => {
 
 .view-link:hover {
   background-color: #45a049;
+}
+
+/* Pagination Styles */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pagination-button {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.page-number {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 2.5rem;
+}
+
+.page-number:hover:not(.active) {
+  background: #e9ecef;
+}
+
+.page-number.active {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+/* Responsive Pagination */
+@media (max-width: 768px) {
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .page-numbers {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    margin: 0.5rem 0;
+  }
+  
+  .pagination-button {
+    order: 1;
+  }
 }
 </style> 
