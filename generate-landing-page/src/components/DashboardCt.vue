@@ -14,23 +14,26 @@
         <div class="upload-area" 
           @dragover.prevent 
           @drop.prevent="handleDrop"
-          :class="{ 'has-image': selectedImage }"
+          :class="{ 'has-images': selectedImages.length > 0 }"
         >
           <input 
             type="file" 
             ref="fileInput" 
             @change="handleFileSelect" 
             accept="image/*" 
+            multiple
             class="file-input"
           >
-          <div v-if="!selectedImage" class="upload-placeholder">
+          <div v-if="selectedImages.length === 0" class="upload-placeholder">
             <i class="fas fa-cloud-upload-alt"></i>
-            <p>Drag & drop an image here or click to select</p>
-            <p class="upload-hint">Supported formats: JPG, PNG, GIF (Max size: 5MB)</p>
+            <p>Drag & drop images here or click to select</p>
+            <p class="upload-hint">Supported formats: JPG, PNG, GIF (Max size: 5MB per image, up to 5 images)</p>
           </div>
-          <div v-else class="image-preview">
-            <img :src="imagePreview" alt="Preview">
-            <button @click="removeImage" class="remove-image">×</button>
+          <div v-else class="images-preview">
+            <div v-for="(image, index) in selectedImages" :key="index" class="image-preview-item">
+              <img :src="image.preview" alt="Preview">
+              <button @click="removeImage(index)" class="remove-image">×</button>
+            </div>
           </div>
         </div>
       </div>
@@ -91,7 +94,7 @@ const successMessage = ref('')
 const generatedPageUrl = ref('')
 const generatedPages = ref([])
 const loadingPages = ref(false)
-const selectedImage = ref(null)
+const selectedImages = ref([])
 const imagePreview = ref('')
 const fileInput = ref(null)
 
@@ -100,44 +103,51 @@ const formatDate = (dateString) => {
 }
 
 const handleFileSelect = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    validateAndSetImage(file)
-  }
+  const files = Array.from(event.target.files)
+  handleFiles(files)
 }
 
 const handleDrop = (event) => {
-  const file = event.dataTransfer.files[0]
-  if (file) {
-    validateAndSetImage(file)
-  }
+  const files = Array.from(event.dataTransfer.files)
+  handleFiles(files)
 }
 
-const validateAndSetImage = (file) => {
+const handleFiles = (files) => {
+  // Limit to 5 images
+  const remainingSlots = 5 - selectedImages.value.length
+  const filesToProcess = files.slice(0, remainingSlots)
+
+  filesToProcess.forEach(file => {
+    validateAndAddImage(file)
+  })
+}
+
+const validateAndAddImage = (file) => {
   // Check file type
   if (!file.type.startsWith('image/')) {
-    error.value = 'Please select an image file'
+    error.value = 'Please select only image files'
     return
   }
 
   // Check file size (5MB limit)
   if (file.size > 5 * 1024 * 1024) {
-    error.value = 'Image size should be less than 5MB'
+    error.value = 'Each image should be less than 5MB'
     return
   }
 
-  selectedImage.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
-    imagePreview.value = e.target.result
+    selectedImages.value.push({
+      file: file,
+      preview: e.target.result
+    })
   }
   reader.readAsDataURL(file)
   error.value = ''
 }
 
-const removeImage = () => {
-  selectedImage.value = null
-  imagePreview.value = ''
+const removeImage = (index) => {
+  selectedImages.value.splice(index, 1)
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -171,9 +181,11 @@ const generateLandingPage = async () => {
     
     const formData = new FormData()
     formData.append('description', pageDescription.value)
-    if (selectedImage.value) {
-      formData.append('image', selectedImage.value)
-    }
+    
+    // Append all selected images
+    selectedImages.value.forEach((imageData, index) => {
+      formData.append('images', imageData.file)
+    })
 
     const response = await axios.post('http://localhost:3000/api/generate-landing-page', formData, {
       headers: {
@@ -186,7 +198,10 @@ const generateLandingPage = async () => {
       generatedPageUrl.value = `http://localhost:3000${response.data.fileUrl}`
       // Clear the form
       pageDescription.value = ''
-      removeImage()
+      selectedImages.value = []
+      if (fileInput.value) {
+        fileInput.value.value = ''
+      }
       // Refresh the list of pages
       await fetchGeneratedPages()
     }
@@ -252,10 +267,10 @@ onMounted(() => {
   background-color: #f5f5f5;
 }
 
-.upload-area.has-image {
+.upload-area.has-images {
   border-style: solid;
   border-color: #4CAF50;
-  padding: 0;
+  padding: 1rem;
 }
 
 .file-input {
@@ -284,29 +299,37 @@ onMounted(() => {
   margin-top: 0.5rem;
 }
 
-.image-preview {
+.images-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.image-preview-item {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 150px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
-.image-preview img {
+.image-preview-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.remove-image {
+.image-preview-item .remove-image {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 5px;
+  right: 5px;
   background: rgba(255, 255, 255, 0.8);
   border: none;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -314,7 +337,7 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-.remove-image:hover {
+.image-preview-item .remove-image:hover {
   background: rgba(255, 255, 255, 1);
   transform: scale(1.1);
 }

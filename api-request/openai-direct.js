@@ -37,7 +37,8 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
+        fileSize: 5 * 1024 * 1024, // 5MB limit per file
+        files: 5 // Maximum 5 images
     },
     fileFilter: function (req, file, cb) {
         if (!file.mimetype.startsWith('image/')) {
@@ -134,10 +135,10 @@ router.get('/landing-pages', (req, res) => {
     }
 });
 
-router.post('/generate-landing-page', upload.single('image'), async (req, res) => {
+router.post('/generate-landing-page', upload.array('images', 5), async (req, res) => {
     try {
         const { description } = req.body;
-        const uploadedImage = req.file;
+        const uploadedImages = req.files || [];
 
         if (!description) {
             return res.status(400).json({
@@ -150,12 +151,14 @@ router.post('/generate-landing-page', upload.single('image'), async (req, res) =
         const fullFilename = `${filename}.html`;
         const filePath = path.join(landingPagesDir, fullFilename);
 
-        // Prepare image information for the prompt if an image was uploaded
-        const imageInfo = uploadedImage ? `
-            The user has provided an image for the landing page. 
-            The image is located at: /uploads/${uploadedImage.filename}
-            Please incorporate this image into the design.
+        // Prepare image information for the prompt if images were uploaded
+        const imageInfo = uploadedImages.length > 0 ? `
+            The user has provided ${uploadedImages.length} image(s) for the landing page.
+            The images are located at:
+            ${uploadedImages.map(img => `/uploads/${img.filename}`).join('\n')}
+            Please incorporate these images into the design appropriately.
             Make sure to use proper image optimization and responsive design techniques.
+            Consider using a gallery or carousel for multiple images if appropriate.
         ` : '';
 
         const completion = await openai.chat.completions.create({
